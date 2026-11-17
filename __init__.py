@@ -22,27 +22,13 @@ def _so():
     return system_one
 
 
-def _cap(v, default):
-    if v is None or v == "":
-        v = default
-    v = float(v)
-    return None if v < 0 else v
+SETTING_KEYS = ("provider", "model_name", "base_url", "usd_per_mtok", "total_cap_usd", "daily_cap_usd",
+                "per_call_cap_usd", "cap_utc_offset_hours", "timeout_s")
 
 
 def _settings(ctx):
-    so = _so()
-    g = ctx.get_config
-    return so.Settings(
-        provider=str(g("provider", "jev") or "jev"),
-        model=str(g("model_name", "") or ""),
-        base_url=str(g("base_url", "") or ""),
-        usd_per_mtok=float(g("usd_per_mtok", 0) or 0) or None,
-        caps=so.Caps(total_usd=_cap(g("total_cap_usd", 5.0), 5.0),
-                  daily_usd=_cap(g("daily_cap_usd", 0.5), 0.5),
-                  per_call_usd=_cap(g("per_call_cap_usd", 0.05), 0.05),
-                  utc_offset_hours=float(g("cap_utc_offset_hours", 0) or 0)),
-        timeout_s=float(g("timeout_s", 90) or 90),
-    )
+    """Same parser scripts use (Settings.from_mapping), so the tool and scripts never disagree."""
+    return _so().Settings.from_mapping({k: ctx.get_config(k, None) for k in SETTING_KEYS})
 
 
 def _get_secret(name: str):

@@ -97,6 +97,30 @@ class Settings:
     timeout_s: float = 90.0
     retries: int = 2  # on 429 / 5xx / network errors only
 
+    @classmethod
+    def from_mapping(cls, s: Mapping[str, Any] | None) -> "Settings":
+        """Parse the plugin's settings dict (``plugins.entries.system-one.settings``), with the same
+        defaults and cap rules as the Hermes tool. The one place these rules live: scripts that
+        read the user's Hermes settings call this instead of re-implementing them."""
+        s = dict(s or {})
+
+        def num(key, default):
+            v = s.get(key, default)
+            return default if v in (None, "") else float(v)
+
+        def cap(key, default):
+            v = num(key, default)
+            return None if v < 0 else v  # -1 = no cap, 0 = block every call
+
+        return cls(provider=str(s.get("provider") or "jev").strip().lower(),
+                   model=str(s.get("model_name") or "").strip(),
+                   base_url=str(s.get("base_url") or "").strip(),
+                   usd_per_mtok=num("usd_per_mtok", 0) or None,
+                   caps=Caps(total_usd=cap("total_cap_usd", 5.0), daily_usd=cap("daily_cap_usd", 0.5),
+                             per_call_usd=cap("per_call_cap_usd", 0.05),
+                             utc_offset_hours=num("cap_utc_offset_hours", 0)),
+                   timeout_s=num("timeout_s", 90) or 90.0)
+
     def resolved(self, provider: str | None = None, model: str | None = None) -> Resolved:
         same = provider in (None, "", self.provider)
         return resolve(provider or self.provider,

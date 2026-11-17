@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 (2026-11-17)
+
+- `Settings.from_mapping(settings_dict)`: the one parser for the plugin's settings (defaults, `-1`
+  = no cap, `0` = block). The tool uses it, and scripts that read the user's Hermes settings
+  should call it instead of re-implementing the rules.
+
 ## 0.3.0 (2026-11-17)
 
 - **No SDK needed.** `system_one.noul / choice / score / box / question` build questions as plain
