@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 PLUGIN = "system-one"
 _HERE = Path(__file__).resolve().parent
-PROVIDERS = ["jev", "liquid", "upstage", "azure", "local", "custom"]  # keep in sync with system_one.providers.BUILTIN (tested)
+PROVIDERS = ["jev", "liquid", "upstage", "azure", "ollama", "local", "custom"]  # keep in sync with system_one.providers.BUILTIN (tested)
 
 
 def _so():

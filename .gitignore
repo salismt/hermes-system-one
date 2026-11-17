@@ -4,3 +4,9 @@ __pycache__/
 *.sqlite
 *.jsonl
 .env
+launch/*/node_modules/
+launch/*/renders/
+launch/*/out/
+launch/*/.hyperframes/
+launch/.npm-cache/
+launch/*/check-stderr.log

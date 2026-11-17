@@ -1,11 +1,11 @@
 name: system-one
-version: 0.4.0
+version: 0.4.1
 manifest_version: 2
 api_version: 1
 description: >-
   Typed judgments from System One decision models with calibrated probabilities: TypeSafe Jev,
   Liquid d1.2, Upstage Solar Decide, Microsoft-Decision-1 on Azure, your own self-hosted server
-  (llama.cpp, laya-serve), or any endpoint that implements the System One contract. Switch
+  (Ollama with Laya or Tev1, llama.cpp), or any endpoint that implements the System One contract. Switch
   provider and model in settings; spend caps are checked before every call.
 author: Salis (salismt)
 license: MIT
@@ -21,20 +21,20 @@ provides_hooks: []
 config_schema:
   provider:
     type: str
-    choices: [jev, liquid, upstage, azure, local, custom]
+    choices: [jev, liquid, upstage, azure, ollama, local, custom]
     default: jev
     label: Provider
-    description: "jev = TypeSafe Jev. liquid = Liquid AI d1.2. upstage = Upstage Solar Decide. azure = Microsoft-Decision-1 on your Azure AI Foundry resource (set Base URL and Model = deployment name). local = your own self-hosted server (llama.cpp, laya-serve; see README). custom = any other hosted System One endpoint (set Base URL, Model and Price)."
+    description: "jev = TypeSafe Jev. liquid = Liquid AI d1.2. upstage = Upstage Solar Decide. azure = Microsoft-Decision-1 on your Azure AI Foundry resource (set Base URL and Model = deployment name). ollama = models you run in Ollama, such as Laya or Tev1 (free, on your machine). local = another self-hosted server such as llama.cpp (see README). custom = any other hosted System One endpoint (set Base URL, Model and Price)."
   model_name:
     type: str
     default: ""
     label: Model
-    description: "Blank = the provider's default (jev: jev-1.14.0, liquid: d1.2-ultra, upstage: solar-decide). liquid also offers d1.2 (cheaper); upstage also offers solar-decide-flash (set Price). azure: required, your deployment name. local: optional, the model your server should load."
+    description: "Blank = the provider's default (jev: jev-1.14.0, liquid: d1.2-ultra, upstage: solar-decide). liquid also offers d1.2 (cheaper); upstage also offers solar-decide-flash (set Price). azure: required, your deployment name. ollama: blank = laya; or tev1, tev1:0.8b, laya:421m-english-bf16, any decision model you pulled. local: optional, the model your server should load."
   base_url:
     type: str
     default: ""
     label: Base URL
-    description: "azure: required, your Foundry resource endpoint (https://<name>.services.ai.azure.com). local: your server (default http://127.0.0.1:8080; laya-serve uses :8000). upstage: optional, https://kr.api.upstage.ai for the Korea region. custom: required. jev and liquid can't be changed, so their keys can't be redirected. https:// only; plain http:// only to localhost."
+    description: "azure: required, your Foundry resource endpoint (https://<name>.services.ai.azure.com). ollama: blank = http://127.0.0.1:11434. local: your server (default http://127.0.0.1:8080). upstage: optional, https://kr.api.upstage.ai for the Korea region. custom: required. jev and liquid can't be changed, so their keys can't be redirected. https:// only; plain http:// only to localhost."
   usd_per_mtok:
     type: float
     default: 0
@@ -64,7 +64,7 @@ config_schema:
     type: secret
     env: SYSTEM_ONE_LOCAL_API_KEY
     label: Self-hosted server key (optional)
-    description: "For provider local, only if your server requires one (e.g. laya-serve with LAYA_API_KEY). Sent as a bearer token."
+    description: "For providers ollama and local, only if your server sits behind an auth proxy. Local Ollama and llama.cpp need none. Sent as a bearer token."
   custom_api_key:
     type: secret
     env: SYSTEM_ONE_API_KEY

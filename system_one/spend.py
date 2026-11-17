@@ -18,6 +18,13 @@ from pathlib import Path
 _LOCK = threading.Lock()
 
 
+
+def usd(x: float) -> str:
+    """Readable at decision-model prices: $0.50, $0.0000169 (never $0.0000)."""
+    if x >= 0.01 or x <= 0:
+        return f"${x:.2f}"
+    return "$" + f"{float(f'{x:.3g}'):.10f}".rstrip("0")  # 3 significant digits, no exponent
+
 class BudgetExceeded(RuntimeError):
     """Raised before sending. Callers must surface it as an error, never as an answer."""
 
@@ -67,17 +74,17 @@ class Ledger:
 
     def check(self, est_usd: float, caps: Caps, *, tag: str = "", run_cap_usd: float | None = None) -> None:
         if caps.per_call_usd is not None and est_usd > caps.per_call_usd:
-            raise BudgetExceeded(f"per-call cap ${caps.per_call_usd:.4f} (this call est. ${est_usd:.4f})")
+            raise BudgetExceeded(f"per-call cap {usd(caps.per_call_usd)} (this call est. {usd(est_usd)})")
         total = self.spent()
         if caps.total_usd is not None and total + est_usd > caps.total_usd:
-            raise BudgetExceeded(f"total cap ${caps.total_usd:.2f} reached (spent ${total:.4f})")
+            raise BudgetExceeded(f"total cap {usd(caps.total_usd)} reached (spent {usd(total)})")
         day = self.spent(self.today(caps))
         if caps.daily_usd is not None and day + est_usd > caps.daily_usd:
-            raise BudgetExceeded(f"daily cap ${caps.daily_usd:.2f} reached (today ${day:.4f})")
+            raise BudgetExceeded(f"daily cap {usd(caps.daily_usd)} reached (today {usd(day)})")
         if run_cap_usd is not None:
             run = self.spent(tag_prefix=tag)
             if run + est_usd > run_cap_usd:
-                raise BudgetExceeded(f"run cap ${run_cap_usd:.4f} for {tag!r} reached (spent ${run:.4f})")
+                raise BudgetExceeded(f"run cap {usd(run_cap_usd)} for {tag!r} reached (spent {usd(run)})")
 
     def record(self, *, caps: Caps, tag: str, provider: str, model: str, request_id: str,
                est_tokens: int, input_tokens: int, usd: float) -> None:

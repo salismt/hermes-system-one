@@ -1,0 +1,87 @@
+{
+ "request": "Help! My payouts have been failing for 3 days.",
+ "measured": "2026-11-17",
+ "plugin": "0.4.1",
+ "rows": [
+  {
+   "label": "jev \u00b7 jev-1.14.0",
+   "where": "TypeSafe API",
+   "top": "billing",
+   "p_billing": 0.87,
+   "urgent": 0.94,
+   "ms": 1605,
+   "usd": 1.688e-05,
+   "p_top": 0.87
+  },
+  {
+   "label": "liquid \u00b7 d1.2-ultra",
+   "where": "Liquid API",
+   "top": "billing",
+   "p_billing": 0.914,
+   "urgent": 0.923,
+   "ms": 486,
+   "usd": 5.59e-06,
+   "p_top": 0.914
+  },
+  {
+   "label": "liquid \u00b7 d1.2",
+   "where": "Liquid API",
+   "top": "billing",
+   "p_billing": 0.913,
+   "urgent": 0.866,
+   "ms": 391,
+   "usd": 2.66e-06,
+   "p_top": 0.913
+  },
+  {
+   "label": "ollama \u00b7 laya",
+   "where": "Ollama, this Mac",
+   "top": "billing",
+   "p_billing": 0.837,
+   "urgent": 0.741,
+   "ms": 68,
+   "usd": 0,
+   "p_top": 0.837
+  },
+  {
+   "label": "ollama \u00b7 tev1 (4B)",
+   "where": "Ollama, this Mac",
+   "top": "billing",
+   "p_billing": 0.905,
+   "urgent": 0.852,
+   "ms": 316,
+   "usd": 0,
+   "p_top": 0.905
+  },
+  {
+   "label": "ollama \u00b7 tev1:0.8b",
+   "where": "Ollama, this Mac",
+   "top": "technical",
+   "p_billing": 0.191,
+   "urgent": 0.992,
+   "ms": 65,
+   "usd": 0,
+   "p_top": 0.809
+  },
+  {
+   "label": "local \u00b7 d1-2B Q4_K_M",
+   "where": "llama.cpp, this Mac",
+   "top": "billing",
+   "p_billing": 0.978,
+   "urgent": 0.694,
+   "ms": 365,
+   "usd": 0,
+   "p_top": 0.978
+  },
+  {
+   "label": "local \u00b7 Kev-0.8B Q8_0",
+   "where": "llama.cpp, this Mac",
+   "top": "technical",
+   "p_billing": 0.42,
+   "urgent": 0.591,
+   "ms": 398,
+   "usd": 0,
+   "p_top": 0.559
+  }
+ ]
+}

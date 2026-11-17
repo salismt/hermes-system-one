@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="478" viewBox="0 0 880 478" role="img">
+<title>Same request on every provider: probability of the billing team, latency and cost</title>
+<rect width="880" height="478" fill="#0d1117"/>
+<g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" fill="#f0f6fc">
+<text x="0" y="22" font-size="17" font-weight="600">Same request, same code. Only the provider setting changed.</text>
+<text x="0" y="46" fill="#9198a1">“Help! My payouts have been failing for 3 days.” → which team? Bar = probability of billing.</text>
+<text x="200" y="78" font-size="13" fill="#9198a1">0</text>
+<text x="450" y="78" font-size="13" text-anchor="end" fill="#9198a1">1</text>
+<text x="466" y="78" font-size="13" fill="#9198a1">top pick · latency · cost</text>
+<text x="0" y="109" font-weight="600">jev · jev-1.14.0</text>
+<text x="0" y="127" font-size="13" fill="#9198a1">TypeSafe API</text>
+<rect x="200" y="98" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="98" width="217.5" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="112"><tspan fill="#3fb950" font-weight="600">billing 0.87</tspan><tspan fill="#9198a1"> · 1.6 s · $0.0000169</tspan></text>
+<text x="0" y="153" font-weight="600">liquid · d1.2-ultra</text>
+<text x="0" y="171" font-size="13" fill="#9198a1">Liquid API</text>
+<rect x="200" y="142" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="142" width="228.5" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="156"><tspan fill="#3fb950" font-weight="600">billing 0.91</tspan><tspan fill="#9198a1"> · 486 ms · $0.00000559</tspan></text>
+<text x="0" y="197" font-weight="600">liquid · d1.2</text>
+<text x="0" y="215" font-size="13" fill="#9198a1">Liquid API</text>
+<rect x="200" y="186" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="186" width="228.2" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="200"><tspan fill="#3fb950" font-weight="600">billing 0.91</tspan><tspan fill="#9198a1"> · 391 ms · $0.00000266</tspan></text>
+<text x="0" y="241" font-weight="600">ollama · laya</text>
+<text x="0" y="259" font-size="13" fill="#9198a1">Ollama, this Mac</text>
+<rect x="200" y="230" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="230" width="209.2" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="244"><tspan fill="#3fb950" font-weight="600">billing 0.84</tspan><tspan fill="#9198a1"> · 68 ms · $0, local</tspan></text>
+<text x="0" y="285" font-weight="600">ollama · tev1 (4B)</text>
+<text x="0" y="303" font-size="13" fill="#9198a1">Ollama, this Mac</text>
+<rect x="200" y="274" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="274" width="226.2" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="288"><tspan fill="#3fb950" font-weight="600">billing 0.91</tspan><tspan fill="#9198a1"> · 316 ms · $0, local</tspan></text>
+<text x="0" y="329" font-weight="600">ollama · tev1:0.8b</text>
+<text x="0" y="347" font-size="13" fill="#9198a1">Ollama, this Mac</text>
+<rect x="200" y="318" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="318" width="47.8" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="332"><tspan fill="#f85149" font-weight="600">technical 0.81</tspan><tspan fill="#9198a1"> · 65 ms · $0, local</tspan></text>
+<text x="0" y="373" font-weight="600">local · d1-2B Q4_K_M</text>
+<text x="0" y="391" font-size="13" fill="#9198a1">llama.cpp, this Mac</text>
+<rect x="200" y="362" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="362" width="244.5" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="376"><tspan fill="#3fb950" font-weight="600">billing 0.98</tspan><tspan fill="#9198a1"> · 365 ms · $0, local</tspan></text>
+<text x="0" y="417" font-weight="600">local · Kev-0.8B Q8_0</text>
+<text x="0" y="435" font-size="13" fill="#9198a1">llama.cpp, this Mac</text>
+<rect x="200" y="406" width="250" height="18" rx="3" fill="#151b23"/>
+<rect x="200" y="406" width="105.0" height="18" rx="3" fill="#f0f6fc"/>
+<text x="466" y="420"><tspan fill="#f85149" font-weight="600">technical 0.56</tspan><tspan fill="#9198a1"> · 398 ms · $0, local</tspan></text>
+<text x="0" y="462" font-size="13" fill="#9198a1">One request, measured once per model on 2026-11-17 (MacBook, Apple Silicon). Not a benchmark: test on your own labelled data.</text>
+</g></svg>

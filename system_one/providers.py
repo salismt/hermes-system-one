@@ -21,6 +21,7 @@ class Capabilities:
     max_questions: int | None = None
     max_body_bytes: int | None = None
     max_choice_options: int | None = None
+    max_score_levels: int | None = None
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,9 @@ _LIQUID_D12 = Capabilities(frozenset({"noul", "choice", "score", "text", "number
 _LIQUID_OLD = Capabilities(_CORE, max_questions=128, max_body_bytes=4_500_000)  # deprecated d1, d1.1, d1-ultra
 _UPSTAGE = Capabilities(_CORE, max_choice_options=26)                       # console.upstage.ai/api/systemone
 _AZURE = Capabilities(_CORE)                                                  # learn.microsoft.com (Decision-1)
+# ollama.com/library/laya and /tev1: 1-64 questions, 2-26 options or levels, 64 KiB bodies
+_OLLAMA_S1 = Capabilities(_CORE, max_questions=64, max_body_bytes=65_536, max_choice_options=26,
+                          max_score_levels=26)
 
 
 # List prices checked 2026-11-17. Prices change: confirm on each provider's pricing page.
@@ -115,13 +119,24 @@ BUILTIN: dict[str, Provider] = {
         base_url_root_only=True,
         model_required=True,
     ),
+    "ollama": Provider(
+        name="ollama",
+        base_url="http://127.0.0.1:11434",
+        default_model="laya",  # also tev1 (4B), tev1:0.8b, or any decision model you pulled
+        key_env="SYSTEM_ONE_LOCAL_API_KEY",  # local Ollama has no auth; only for an auth proxy
+        usd_per_mtok={"*": 0.0},
+        docs="https://ollama.com/library/laya",
+        caps={"laya": _OLLAMA_S1, "tev1": _OLLAMA_S1},  # matched on the name before ':'; others unchecked
+        key_optional=True,
+        base_url_rule="any",
+    ),
     "local": Provider(
         name="local",
-        base_url="http://127.0.0.1:8080",  # llama.cpp's default; laya-serve uses :8000
+        base_url="http://127.0.0.1:8080",  # llama.cpp's default
         default_model="",  # optional: a single-model server ignores it
         key_env="SYSTEM_ONE_LOCAL_API_KEY",
         usd_per_mtok={"*": 0.0},
-        docs="Self-hosted System One server: llama.cpp, laya-serve, or any /v1/systemone server.",
+        docs="Self-hosted System One server: llama.cpp llama-server, or any /v1/systemone server.",
         caps=None,  # depends on the server and model
         key_optional=True,
         base_url_rule="any",
@@ -215,6 +230,10 @@ class Resolved:
             if c.max_choice_options is not None and n > c.max_choice_options:
                 raise UnsupportedRequest(f"question {qid!r}: {where} takes at most {c.max_choice_options} "
                                          f"choice options (got {n}); split it or shortlist first")
+            n = len(q.get("criteria") or []) if t == "score" else 0
+            if c.max_score_levels is not None and n > c.max_score_levels:
+                raise UnsupportedRequest(f"question {qid!r}: {where} takes at most {c.max_score_levels} "
+                                         f"score levels (got {n})")
 
     @property
     def url(self) -> str:
@@ -242,6 +261,8 @@ def resolve(provider: str, *, model: str = "", base_url: str = "",
     if not mdl and p.model_required:
         what = "your deployment name" if name == "azure" else "a model"
         raise ValueError(f"provider {name!r} needs model_name in the plugin settings ({what})")
-    caps = None if p.caps is None else p.caps.get(mdl, p.caps.get("*"))
+    caps = None
+    if p.caps is not None:  # exact model, then its family ("laya:421m-english-bf16" -> "laya"), then "*"
+        caps = p.caps.get(mdl) or p.caps.get(mdl.split(":", 1)[0]) or p.caps.get("*")
     return Resolved(name, url, mdl, p.key_env, p.price_per_token(mdl or "*", usd_per_mtok), caps,
                     p.path, p.auth_header, p.auth_prefix, p.key_optional)
