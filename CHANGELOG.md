@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 (2026-11-17)
+
+- `requires_hermes` raised to `>=0.23`, the oldest Hermes this plugin has been tested on (0.23.1).
+  No code change.
+
 ## 0.3.1 (2026-11-17)
 
 - `Settings.from_mapping(settings_dict)`: the one parser for the plugin's settings (defaults, `-1`

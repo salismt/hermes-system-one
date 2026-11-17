@@ -1,5 +1,5 @@
 name: system-one
-version: 0.3.1
+version: 0.3.2
 manifest_version: 2
 api_version: 1
 description: >-
@@ -9,7 +9,7 @@ description: >-
 author: Salis (salismt)
 license: MIT
 homepage: https://github.com/salismt/hermes-system-one
-requires_hermes: ">=0.21"
+requires_hermes: ">=0.23"
 tags: [decision-models, classification, routing, typesafe, liquid, system-one]
 provides_tools:
   - system_one
