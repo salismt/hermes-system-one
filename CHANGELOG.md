@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.0 (2026-11-17)
+
+New providers, all on the same System One contract:
+
+- `upstage`: Upstage Solar Decide (`solar-decide` at $0.10/1M; `solar-decide-flash`, price not
+  published, so set `usd_per_mtok`). Global or Korea region (`kr.api.upstage.ai`). At most 26
+  options per choice, checked before sending.
+- `azure`: Microsoft-Decision-1 on your Azure AI Foundry resource. Calls
+  `/providers/microsoft/v1/systemone` with the `api-key` header; `model_name` is your
+  deployment name. The resource host must end in `.services.ai.azure.com`,
+  `.cognitiveservices.azure.com` or `.openai.azure.com`.
+- `local`: your own self-hosted server (llama.cpp `llama-server`, `laya-serve`, or any
+  `/v1/systemone` server). Default `http://127.0.0.1:8080`, key optional, model optional, free.
+  README: step-by-step self-hosting, tested on llama.cpp 1.0.0 with Liquid d1-2B and Kev-0.8B.
+
+Also:
+
+- Providers now carry their own path, auth header, base-URL rule (fixed, host allowlist, or any)
+  and whether a key or model is required. Keys still only go to their provider's hosts.
+- A pasted full endpoint URL is trimmed to the base URL.
+- Requests to a model with an empty `model` setting omit the field.
+
 ## 0.3.2 (2026-11-17)
 
 - `requires_hermes` raised to `>=0.23`, the oldest Hermes this plugin has been tested on (0.23.1).

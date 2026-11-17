@@ -1,10 +1,11 @@
 name: system-one
-version: 0.3.2
+version: 0.4.0
 manifest_version: 2
 api_version: 1
 description: >-
-  Typed judgments from System One decision models (TypeSafe Jev, Liquid d1.2 / d1.2-ultra, or any
-  endpoint that implements the System One contract), with calibrated probabilities. Switch
+  Typed judgments from System One decision models with calibrated probabilities: TypeSafe Jev,
+  Liquid d1.2, Upstage Solar Decide, Microsoft-Decision-1 on Azure, your own self-hosted server
+  (llama.cpp, laya-serve), or any endpoint that implements the System One contract. Switch
   provider and model in settings; spend caps are checked before every call.
 author: Salis (salismt)
 license: MIT
@@ -20,25 +21,25 @@ provides_hooks: []
 config_schema:
   provider:
     type: str
-    choices: [jev, liquid, custom]
+    choices: [jev, liquid, upstage, azure, local, custom]
     default: jev
     label: Provider
-    description: "jev = TypeSafe (api.typesafe.ai), liquid = Liquid AI (api.liquid.ai/decisions), custom = your own System One endpoint (set Base URL, Model and Price)."
+    description: "jev = TypeSafe Jev. liquid = Liquid AI d1.2. upstage = Upstage Solar Decide. azure = Microsoft-Decision-1 on your Azure AI Foundry resource (set Base URL and Model = deployment name). local = your own self-hosted server (llama.cpp, laya-serve; see README). custom = any other hosted System One endpoint (set Base URL, Model and Price)."
   model_name:
     type: str
     default: ""
     label: Model
-    description: "Blank = the provider's default (jev: jev-1.14.0, liquid: d1.2-ultra). Liquid also offers d1.2 (cheaper)."
+    description: "Blank = the provider's default (jev: jev-1.14.0, liquid: d1.2-ultra, upstage: solar-decide). liquid also offers d1.2 (cheaper); upstage also offers solar-decide-flash (set Price). azure: required, your deployment name. local: optional, the model your server should load."
   base_url:
     type: str
     default: ""
     label: Base URL
-    description: "Only for provider custom (built-in providers always use their own host, so their keys can't be redirected). The plugin appends /v1/systemone. https:// only; http:// is allowed for localhost."
+    description: "azure: required, your Foundry resource endpoint (https://<name>.services.ai.azure.com). local: your server (default http://127.0.0.1:8080; laya-serve uses :8000). upstage: optional, https://kr.api.upstage.ai for the Korea region. custom: required. jev and liquid can't be changed, so their keys can't be redirected. https:// only; plain http:// only to localhost."
   usd_per_mtok:
     type: float
     default: 0
     label: Price (USD per 1M input tokens)
-    description: "0 = the built-in list price. Required for custom. Used for the caps below."
+    description: "0 = the built-in list price (local = free). Required for custom and for upstage solar-decide-flash. Used for the caps below."
   typesafe_api_key:
     type: secret
     env: TYPESAFE_API_KEY
@@ -49,6 +50,21 @@ config_schema:
     env: LIQUID_API_KEY
     label: Liquid API key
     description: "For provider liquid. console.liquid.ai > Dashboard > API Keys (starts with liquid_)."
+  upstage_api_key:
+    type: secret
+    env: UPSTAGE_API_KEY
+    label: Upstage API key
+    description: "For provider upstage. console.upstage.ai > API Keys."
+  azure_foundry_api_key:
+    type: secret
+    env: AZURE_FOUNDRY_API_KEY
+    label: Azure AI Foundry API key
+    description: "For provider azure. From your Microsoft-Decision-1 deployment's details page. Sent as the api-key header."
+  local_api_key:
+    type: secret
+    env: SYSTEM_ONE_LOCAL_API_KEY
+    label: Self-hosted server key (optional)
+    description: "For provider local, only if your server requires one (e.g. laya-serve with LAYA_API_KEY). Sent as a bearer token."
   custom_api_key:
     type: secret
     env: SYSTEM_ONE_API_KEY

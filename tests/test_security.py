@@ -32,7 +32,7 @@ def test_good_custom_urls_allowed(url):
 
 @pytest.mark.parametrize("provider", ["jev", "liquid"])
 def test_builtin_key_cannot_be_redirected(provider):
-    with pytest.raises(ValueError, match="only applies to provider 'custom'"):
+    with pytest.raises(ValueError, match="can't be changed for provider"):
         Settings(provider=provider, base_url="https://attacker.example").resolved()
 
 

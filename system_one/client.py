@@ -28,9 +28,11 @@ def _redact(text: str, secret: str) -> str:
     return text
 
 
-def _valid_key(key: str | None, env: str) -> str:
+def _valid_key(key: str | None, env: str, optional: bool = False) -> str:
     key = (key or "").strip()
     if not key:
+        if optional:
+            return ""  # e.g. a self-hosted server without auth
         raise SystemOneError(f"{env} is not set")
     if any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in key):
         # Never echo the key: http.client's own error would print it in full.
@@ -69,7 +71,10 @@ def _question_dict(q: Any) -> dict:
 def build_body(model: str, state: Any, questions: Mapping[str, Any]) -> dict:
     if not questions:
         raise ValueError("at least one question is required")
-    return {"state": state, "model": model, "questions": {k: _question_dict(v) for k, v in questions.items()}}
+    body = {"state": state, "model": model, "questions": {k: _question_dict(v) for k, v in questions.items()}}
+    if not model:
+        del body["model"]  # self-hosted single-model servers don't need one
+    return body
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -170,9 +175,11 @@ class SystemOne:
             return {"dry_run": True, "provider": r.provider, "model": r.model, "est_tokens": est,
                     "est_usd": round(est_usd, 8)}
         self.ledger.check(est_usd, self.settings.caps, tag=tag, run_cap_usd=run_cap_usd)
-        key = _valid_key(self._get_key(r.key_env), r.key_env)
-        headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
-                   "Accept": "application/json", "User-Agent": f"hermes-system-one/{__version__}"}
+        key = _valid_key(self._get_key(r.key_env), r.key_env, optional=r.key_optional)
+        headers = {"Content-Type": "application/json", "Accept": "application/json",
+                   "User-Agent": f"hermes-system-one/{__version__}"}
+        if key:
+            headers[r.auth_header] = f"{r.auth_prefix}{key}"
         try:
             status, rh, content = self._send(r.url, raw, headers)
         except SystemOneError as e:

@@ -53,6 +53,9 @@ The `system_one` tool sends every request to the provider set in the plugin sett
 | --- | --- | --- |
 | `jev` (TypeSafe) | `jev-1.14.0` | [index](https://docs.typesafe.ai/llms.txt), [primitives](https://docs.typesafe.ai/go/primitives.md), [models](https://docs.typesafe.ai/go/models.md), [jaggedness](https://docs.typesafe.ai/go/jaggedness.md), [cookbooks](https://docs.typesafe.ai/go/cookbooks.md) |
 | `liquid` (Liquid AI) | `d1.2-ultra`, `d1.2` | [decisions guide](https://docs.liquid.ai/api/guides/decisions.md), [d1.2 models](https://docs.liquid.ai/lfm/models/d1.md), [index](https://docs.liquid.ai/llms.txt) |
+| `upstage` (Upstage Solar Decide) | `solar-decide`, `solar-decide-flash` | [System One API](https://console.upstage.ai/api/systemone.md) |
+| `azure` (Microsoft-Decision-1) | your Foundry deployment | [Microsoft Learn](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/use-foundry-models-microsoft-decision) |
+| `local` (self-hosted: llama.cpp, laya-serve) | whatever the server runs | [llama.cpp decision models](https://huggingface.co/blog/ggml-org/decision-models-in-llamacpp), [laya-serve](https://github.com/NandhaKishorM/laya/blob/main/docs/http-api.md) |
 | `custom` | your own | the endpoint's own docs |
 
 Question types differ by model, and the client refuses a request the chosen model can't take

@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 PLUGIN = "system-one"
 _HERE = Path(__file__).resolve().parent
-PROVIDERS = ["jev", "liquid", "custom"]  # keep in sync with system_one.providers.BUILTIN (tested)
+PROVIDERS = ["jev", "liquid", "upstage", "azure", "local", "custom"]  # keep in sync with system_one.providers.BUILTIN (tested)
 
 
 def _so():
@@ -125,7 +125,7 @@ def _make_check(ctx):
     def check() -> bool:
         try:
             r = _settings(ctx).resolved()
-            return bool(_get_secret(r.key_env))
+            return r.key_optional or bool(_get_secret(r.key_env))
         except Exception:
             return False
     return check
@@ -139,7 +139,8 @@ def _status(ctx) -> str:
         c = _client(ctx)
         today = c.ledger.spent(c.ledger.today(s.caps))
         fmt = lambda v: "no cap" if v is None else f"${v:.2f}"  # noqa: E731
-        keys = {p.key_env: bool(_get_secret(p.key_env)) for p in so.BUILTIN.values()}
+        keys = {p.key_env: ("set" if _get_secret(p.key_env) else ("optional" if p.key_optional else "missing"))
+                for p in so.BUILTIN.values()}
         lines = [
             f"system-one {so.__version__}",
             f"provider: {r.provider}  model: {r.model}  endpoint: {r.url}",
@@ -147,7 +148,7 @@ def _status(ctx) -> str:
             f"spend: today ${today:.6f} / {fmt(s.caps.daily_usd)}  total ${c.ledger.spent():.6f} / "
             f"{fmt(s.caps.total_usd)}  per call {fmt(s.caps.per_call_usd)}",
             f"by provider: {c.ledger.by_provider() or '{}'}",
-            "keys: " + ", ".join(f"{k} {'set' if v else 'missing'}" for k, v in keys.items()),
+            "keys: " + ", ".join(f"{k} {v}" for k, v in keys.items()),
         ]
         return "\n".join(lines)
     except Exception as e:

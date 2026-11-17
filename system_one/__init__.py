@@ -1,5 +1,5 @@
 """Provider-neutral client for System One decision models (TypeSafe Jev, Liquid d1.2, ...)."""
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 from .client import SystemOne, Settings, SystemOneError, build_body, simplify  # noqa: E402
 from .providers import BUILTIN, Capabilities, UnsupportedRequest, resolve  # noqa: E402
