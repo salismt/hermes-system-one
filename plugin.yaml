@@ -1,5 +1,5 @@
 name: system-one
-version: 0.1.0
+version: 0.1.1
 manifest_version: 2
 api_version: 1
 description: >-
@@ -33,7 +33,7 @@ config_schema:
     type: str
     default: ""
     label: Base URL
-    description: "Only for custom, or to override a built-in endpoint. The plugin appends /v1/systemone. Must be https://."
+    description: "Only for provider custom (built-in providers always use their own host, so their keys can't be redirected). The plugin appends /v1/systemone. https:// only; http:// is allowed for localhost."
   usd_per_mtok:
     type: float
     default: 0
@@ -74,6 +74,11 @@ config_schema:
     default: 0
     label: Cap timezone (UTC offset, hours)
     description: "Which calendar day the daily cap counts. e.g. 7 for Asia/Jakarta."
+  allow_provider_override:
+    type: bool
+    default: false
+    label: Let the agent pick another provider per call
+    description: "Off = every call goes to the provider above. On = the agent may send a call to another provider whose key is set (useful for A/B comparisons). Data goes to whichever provider is used."
   timeout_s:
     type: int
     default: 90

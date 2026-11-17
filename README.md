@@ -61,12 +61,13 @@ Settings are read on every call, so a change applies to the next request with no
 | --- | --- | --- |
 | `provider` | `jev` | `jev`, `liquid` or `custom` |
 | `model_name` | blank | Blank uses the provider's default model |
-| `base_url` | blank | Required for `custom`. Overrides a built-in endpoint. `/v1/systemone` is appended |
+| `base_url` | blank | Only for `custom`, where it is required. `/v1/systemone` is appended |
 | `usd_per_mtok` | `0` | Price per 1M input tokens. `0` uses the built-in list price. Required for `custom` |
 | `total_cap_usd` | `5.0` | All-time cap across providers |
 | `daily_cap_usd` | `0.5` | Cap per calendar day |
 | `per_call_cap_usd` | `0.05` | Refuses any single request estimated above this |
 | `cap_utc_offset_hours` | `0` | Timezone that decides which calendar day the daily cap counts |
+| `allow_provider_override` | `false` | Let the agent send a single call to another provider whose key is set |
 | `timeout_s` | `90` | Request timeout |
 | `log_payloads` | `false` | Append requests and answers to `payloads.jsonl` (the state may be private) |
 
@@ -81,9 +82,7 @@ LIQUID_API_KEY=liquid_... # provider liquid (console.liquid.ai > Dashboard > API
 SYSTEM_ONE_API_KEY=...    # provider custom
 ```
 
-The plugin reads keys through Hermes's profile-scoped secret lookup and sends them only as a
-bearer token to the configured endpoint. Redirects are never followed, so a key can't leak to
-another host.
+See [Key safety](#key-safety) for exactly where a key can and cannot go.
 
 ## Use
 
@@ -118,8 +117,10 @@ Result (real `jev-1.14.0` response, trimmed):
 Optional arguments:
 
 - `dry_run: true` estimates tokens and cost and sends nothing.
-- `provider` and `model` override the configured ones for a single call, which is handy for
-  comparing Jev and Liquid on the same request.
+- `model` overrides the configured model for a single call.
+- `provider` sends a single call to another provider, which is handy for comparing Jev and Liquid
+  on the same request. It is refused unless you turn on `allow_provider_override`, because you
+  decide which vendor receives your data.
 - `tag` labels the call in the spend ledger.
 
 Errors come back as `{"error": ..., "kind": "budget_exceeded" | "provider_error" | "invalid_request"}`.
@@ -161,6 +162,41 @@ and answers `200` with `{"model": "...", "usage": {"input_tokens": N, ...}, "ans
 To add a built-in provider, add an entry to `system_one/providers.py` and to `PROVIDERS` in
 `__init__.py` (a test keeps the two in sync), and add a secret field to `plugin.yaml`.
 
+## Key safety
+
+What happens to an API key you enter:
+
+- **Storage.** Keys are `secret` settings. Hermes stores them in `~/.hermes/.env` (per profile),
+  never in `config.yaml`. The plugin reads them only through Hermes's profile-scoped
+  `get_secret()` and never opens `.env` or any other credential file itself.
+- **Where a key goes.** A key is sent only as an `Authorization: Bearer` header, and only to its
+  own provider: `TYPESAFE_API_KEY` to `api.typesafe.ai`, `LIQUID_API_KEY` to `api.liquid.ai`.
+  `base_url` is refused for built-in providers, so changing one setting can't send those keys
+  anywhere else. Only the dedicated `SYSTEM_ONE_API_KEY` follows a custom `base_url`.
+- **Transport.** `https://` only. Plain `http://` is allowed only to `localhost`, `127.0.0.1` or
+  `::1`, matched by exact hostname, so `localhost.evil.com` is refused. URLs carrying credentials,
+  a query or a fragment are refused. Redirects are never followed: a `3xx` is an error, so a key
+  can't be bounced to another host. TLS certificates are verified by Python's default context.
+- **Never echoed.** Keys with inner whitespace or control characters are rejected before any
+  request, with a message that doesn't contain the key (Python's HTTP stack would otherwise print
+  the whole header). Any provider error body or transport error that contains the key is
+  redacted, the exception chain is dropped, and the text goes through Hermes's secret scrubber
+  before the model sees it.
+- **Never stored.** The spend ledger and the optional payload log hold no headers and no keys. The
+  payload log is created with mode `0600`.
+- **`/system-one`** shows only whether each key is set.
+- **No dependencies, no self-update, no shell, no `eval`.** The client uses only the Python
+  standard library. Tests block all network access.
+
+Known limits:
+
+- The agent runs with your permissions. An agent that can run shell commands can read
+  `~/.hermes/.env` without this plugin. The plugin's guarantee is narrower: it doesn't add a new
+  path for a key to leave your machine.
+- The caps use an estimate before sending. Two calls running at the same moment can both pass the
+  check, so the real spend can go slightly over a cap. Set provider-side limits too where the
+  provider offers them.
+
 ## Privacy and cost disclosure
 
 - The `state` and `questions` you send go to the selected provider: TypeSafe (`api.typesafe.ai`),
@@ -171,7 +207,7 @@ To add a built-in provider, add an entry to `system_one/providers.py` and to `PR
   `usage.input_tokens` after.
 - The ledger (`spend.sqlite`) and the optional payload log live in
   `~/.hermes/plugin-data/system-one/`, outside the plugin folder, so they survive updates.
-- The plugin never updates itself.
+- The plugin never updates itself. Updates arrive only through `hermes plugins update`.
 
 ## Develop
 

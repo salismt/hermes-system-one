@@ -55,7 +55,8 @@ class Ledger:
         if day:
             q += " AND day=?"; a.append(day)
         if tag_prefix:
-            q += " AND tag LIKE ?"; a.append(tag_prefix + "%")
+            esc = tag_prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            q += " AND tag LIKE ? ESCAPE '\\'"; a.append(esc + "%")
         with self._conn() as c:
             return float(c.execute(q, a).fetchone()[0])
 

@@ -7,6 +7,7 @@ Switching providers is a config change, never a code change.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 SYSTEM_ONE_PATH = "/v1/systemone"
 
@@ -59,6 +60,23 @@ BUILTIN: dict[str, Provider] = {
 }
 
 
+_LOOPBACK = {"localhost", "127.0.0.1", "::1"}
+
+
+def check_url(url: str) -> None:
+    """https:// to any host, or plain http:// to loopback only. No credentials in the URL."""
+    u = urlsplit(url)
+    if u.username or u.password or u.fragment or u.query:
+        raise ValueError("base_url must not contain credentials, a query or a fragment")
+    if not u.hostname:
+        raise ValueError("base_url has no host")
+    if u.scheme == "https":
+        return
+    if u.scheme == "http" and u.hostname in _LOOPBACK:
+        return
+    raise ValueError("base_url must be https:// (plain http:// is allowed only for localhost)")
+
+
 @dataclass(frozen=True)
 class Resolved:
     """A provider with the user's settings applied: everything one request needs except the key."""
@@ -79,12 +97,16 @@ def resolve(provider: str, *, model: str = "", base_url: str = "",
     if name not in BUILTIN:
         raise ValueError(f"unknown provider {name!r}; choose one of: {', '.join(BUILTIN)}")
     p = BUILTIN[name]
-    url = (base_url or p.base_url).strip()
+    base_url = (base_url or "").strip()
+    if base_url and name != "custom":
+        # A built-in provider's key only ever goes to that provider's own host. Otherwise one
+        # changed setting (e.g. by a prompt-injected agent) would send the user's key elsewhere.
+        raise ValueError(f"base_url only applies to provider 'custom' (it would redirect {p.key_env})")
+    url = base_url or p.base_url
     mdl = (model or p.default_model).strip()
     if not url:
         raise ValueError(f"provider {name!r} needs base_url in the plugin settings")
-    if not url.startswith("https://") and not url.startswith(("http://localhost", "http://127.0.0.1")):
-        raise ValueError(f"base_url must be https:// (got {url!r})")
+    check_url(url)
     if not mdl:
         raise ValueError(f"provider {name!r} needs model in the plugin settings")
     return Resolved(name, url, mdl, p.key_env, p.price_per_token(mdl, usd_per_mtok))

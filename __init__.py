@@ -88,7 +88,8 @@ SCHEMA = {
             },
             "provider": {
                 "type": "string", "enum": PROVIDERS,
-                "description": "Optional one-off provider override (e.g. to compare answers). Omit to use the configured one.",
+                "description": "Optional one-off provider override, only honoured when the user enabled "
+                               "allow_provider_override. Omit to use the configured provider.",
             },
             "model": {"type": "string", "description": "Optional one-off model override. Omit to use the configured one."},
             "dry_run": {"type": "boolean", "description": "Only estimate tokens and cost; send nothing."},
@@ -99,10 +100,25 @@ SCHEMA = {
 }
 
 
+def _safe(ctx, text: str) -> str:
+    """Defense in depth: run every error through Hermes's own secret scrubber before the model sees it."""
+    try:
+        return ctx.redact_text(text, force=True)
+    except Exception:
+        return text
+
+
 def _make_handler(ctx):
     def handler(args: dict, **kwargs) -> str:
         so = _so()
         try:
+            want = (args.get("provider") or "").strip().lower()
+            configured = str(ctx.get_config("provider", "jev") or "jev").strip().lower()
+            if want and want != configured and not ctx.get_config("allow_provider_override", False):
+                # The user chose which vendor receives their data; the model may not change that.
+                return json.dumps({"error": f"provider override to {want!r} is off; the configured provider is "
+                                            f"{configured!r} (setting allow_provider_override)",
+                                   "kind": "invalid_request"})
             c = _client(ctx)
             r = c.ask(args.get("state"), args.get("questions") or {}, tag=str(args.get("tag") or "tool"),
                       provider=args.get("provider") or None, model=args.get("model") or None,
@@ -111,9 +127,9 @@ def _make_handler(ctx):
         except so.BudgetExceeded as e:
             return json.dumps({"error": f"budget: {e}", "kind": "budget_exceeded"})
         except so.SystemOneError as e:
-            return json.dumps({"error": str(e), "kind": "provider_error", "status": e.status})
+            return json.dumps({"error": _safe(ctx, str(e)), "kind": "provider_error", "status": e.status})
         except Exception as e:  # never crash the agent loop
-            return json.dumps({"error": f"{type(e).__name__}: {e}", "kind": "invalid_request"})
+            return json.dumps({"error": _safe(ctx, f"{type(e).__name__}: {e}"), "kind": "invalid_request"})
     return handler
 
 

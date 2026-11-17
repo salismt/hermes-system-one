@@ -6,6 +6,7 @@ Works inside Hermes (the plugin tool) and outside it (a cron script that puts th
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -18,6 +19,33 @@ from .providers import Resolved, resolve
 from .spend import BudgetExceeded, Caps, Ledger, estimate_tokens
 
 REQUEST_ID_HEADERS = ("x-typesafe-request-id", "x-request-id", "request-id")
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024  # answers are small; refuse anything absurd
+
+
+def _redact(text: str, secret: str) -> str:
+    if secret and len(secret) >= 4:
+        text = text.replace(secret, "«redacted»")
+    return text
+
+
+def _valid_key(key: str | None, env: str) -> str:
+    key = (key or "").strip()
+    if not key:
+        raise SystemOneError(f"{env} is not set")
+    if any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in key):
+        # Never echo the key: http.client's own error would print it in full.
+        raise SystemOneError(f"{env} contains whitespace or control characters; re-enter it")
+    return key
+
+
+def _retry_after(value: str | None, attempt: int) -> float:
+    try:
+        wait = float(value) if value else 0.0
+    except (TypeError, ValueError):
+        wait = 0.0  # HTTP-date form or junk: use backoff
+    if not wait or wait < 0:
+        wait = 1.5 * (attempt + 1)
+    return min(wait, 10.0)
 
 
 class SystemOneError(RuntimeError):
@@ -54,9 +82,9 @@ def _default_post(url: str, body: bytes, headers: dict, timeout: float) -> tuple
     opener = urllib.request.build_opener(_NoRedirect())
     try:
         with opener.open(req, timeout=timeout) as r:
-            return r.status, {k.lower(): v for k, v in r.headers.items()}, r.read()
+            return r.status, {k.lower(): v for k, v in r.headers.items()}, r.read(MAX_RESPONSE_BYTES + 1)
     except urllib.error.HTTPError as e:
-        return e.code, {k.lower(): v for k, v in (e.headers or {}).items()}, e.read() or b""
+        return e.code, {k.lower(): v for k, v in (e.headers or {}).items()}, (e.read(4096) or b"")
 
 
 @dataclass
@@ -115,15 +143,23 @@ class SystemOne:
             return {"dry_run": True, "provider": r.provider, "model": r.model, "est_tokens": est,
                     "est_usd": round(est_usd, 8)}
         self.ledger.check(est_usd, self.settings.caps, tag=tag, run_cap_usd=run_cap_usd)
-        key = self._get_key(r.key_env)
-        if not key:
-            raise SystemOneError(f"{r.key_env} is not set (needed for provider {r.provider!r})")
+        key = _valid_key(self._get_key(r.key_env), r.key_env)
         raw = json.dumps(body, ensure_ascii=False).encode()
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                    "Accept": "application/json", "User-Agent": f"hermes-system-one/{__version__}"}
-        status, rh, content = self._send(r.url, raw, headers)
+        try:
+            status, rh, content = self._send(r.url, raw, headers)
+        except SystemOneError as e:
+            raise SystemOneError(_redact(str(e), key), e.status) from None
+        except Exception as e:  # anything else from the HTTP stack: redact, drop the traceback chain
+            raise SystemOneError(_redact(f"{type(e).__name__}: {e}", key)) from None
+        if len(content) > MAX_RESPONSE_BYTES:
+            raise SystemOneError(f"{r.provider} response larger than {MAX_RESPONSE_BYTES} bytes")
+        if 300 <= status < 400:
+            raise SystemOneError(f"{r.provider} answered a redirect (HTTP {status}); redirects are not "
+                                 f"followed so the key never leaves the configured host", status)
         if status != 200:
-            snippet = content[:300].decode("utf-8", "replace")
+            snippet = _redact(content[:300].decode("utf-8", "replace"), key)
             raise SystemOneError(f"{r.provider} HTTP {status}: {snippet}", status)
         try:
             data = json.loads(content)
@@ -142,7 +178,8 @@ class SystemOne:
                "usage": usage, "request_id": request_id, "usd": round(usd, 8)}
         if self._payload_log:
             self._payload_log.parent.mkdir(parents=True, exist_ok=True)
-            with self._payload_log.open("a") as f:
+            fd = os.open(self._payload_log, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+            with os.fdopen(fd, "a") as f:
                 f.write(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "tag": tag, **out,
                                     "state": state, "questions": body["questions"]}, ensure_ascii=False) + "\n")
         return out
@@ -160,8 +197,7 @@ class SystemOne:
                 last = SystemOneError(f"HTTP {status}", status)
                 if attempt == self.settings.retries:
                     return status, rh, content
-                wait = float(rh.get("retry-after") or 0) or 1.5 * (attempt + 1)
-                time.sleep(min(wait, 10))
+                time.sleep(_retry_after(rh.get("retry-after"), attempt))
                 continue
             if attempt < self.settings.retries:
                 time.sleep(1.5 * (attempt + 1))
