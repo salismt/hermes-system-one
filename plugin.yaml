@@ -1,0 +1,85 @@
+name: system-one
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+description: >-
+  Typed judgments from System One decision models (TypeSafe Jev, Liquid d1.2 / d1.2-ultra, or any
+  endpoint that implements the System One contract), with calibrated probabilities. Switch
+  provider and model in settings; spend caps are checked before every call.
+author: Salis (salismt)
+license: MIT
+homepage: https://github.com/salismt/hermes-system-one
+requires_hermes: ">=0.21"
+tags: [decision-models, classification, routing, typesafe, liquid, system-one]
+provides_tools:
+  - system_one
+provides_hooks: []
+
+# No requires_env: which key is needed depends on the chosen provider. The tool hides itself
+# until the active provider's key is set.
+config_schema:
+  provider:
+    type: str
+    choices: [jev, liquid, custom]
+    default: jev
+    label: Provider
+    description: "jev = TypeSafe (api.typesafe.ai), liquid = Liquid AI (api.liquid.ai/decisions), custom = your own System One endpoint (set Base URL, Model and Price)."
+  model_name:
+    type: str
+    default: ""
+    label: Model
+    description: "Blank = the provider's default (jev: jev-1.14.0, liquid: d1.2-ultra). Liquid also offers d1.2 (cheaper)."
+  base_url:
+    type: str
+    default: ""
+    label: Base URL
+    description: "Only for custom, or to override a built-in endpoint. The plugin appends /v1/systemone. Must be https://."
+  usd_per_mtok:
+    type: float
+    default: 0
+    label: Price (USD per 1M input tokens)
+    description: "0 = the built-in list price. Required for custom. Used for the caps below."
+  typesafe_api_key:
+    type: secret
+    env: TYPESAFE_API_KEY
+    label: TypeSafe API key
+    description: "For provider jev. Get one at https://typesafe.ai"
+  liquid_api_key:
+    type: secret
+    env: LIQUID_API_KEY
+    label: Liquid API key
+    description: "For provider liquid. console.liquid.ai > Dashboard > API Keys (starts with liquid_)."
+  custom_api_key:
+    type: secret
+    env: SYSTEM_ONE_API_KEY
+    label: Custom endpoint API key
+    description: "For provider custom. Sent as a bearer token."
+  total_cap_usd:
+    type: float
+    default: 5.0
+    label: Total spend cap (USD)
+    description: "All-time cap across every provider. -1 = no cap, 0 = block all calls."
+  daily_cap_usd:
+    type: float
+    default: 0.5
+    label: Daily spend cap (USD)
+    description: "Per calendar day (see Cap timezone). -1 = no cap, 0 = block all calls."
+  per_call_cap_usd:
+    type: float
+    default: 0.05
+    label: Per-call cap (USD)
+    description: "Refuses any single request estimated above this. -1 = no cap."
+  cap_utc_offset_hours:
+    type: float
+    default: 0
+    label: Cap timezone (UTC offset, hours)
+    description: "Which calendar day the daily cap counts. e.g. 7 for Asia/Jakarta."
+  timeout_s:
+    type: int
+    default: 90
+    label: Request timeout (seconds)
+  log_payloads:
+    type: bool
+    default: false
+    label: Log payloads
+    description: "Append every request and answer to plugin-data/system-one/payloads.jsonl. Off by default: the state may hold private text."
