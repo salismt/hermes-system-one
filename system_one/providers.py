@@ -21,6 +21,8 @@ class Provider:
     # USD per 1M input tokens, per model. "*" is the fallback for models not listed.
     usd_per_mtok: dict[str, float] = field(default_factory=dict)
     docs: str = ""
+    # model -> capabilities; "*" is the fallback. None = unknown, nothing is checked (custom).
+    caps: dict[str, "Capabilities"] | None = None
 
     def price_per_token(self, model: str, override_usd_per_mtok: float | None = None) -> float:
         if override_usd_per_mtok and override_usd_per_mtok > 0:
@@ -29,6 +31,23 @@ class Provider:
         if rate is None:
             raise ValueError(f"no price known for {self.name}/{model}; set usd_per_mtok in the plugin settings")
         return rate / 1_000_000
+
+
+@dataclass(frozen=True)
+class Capabilities:
+    """What a model accepts. Requests outside it are refused before sending (and before billing)."""
+    types: frozenset[str]
+    choice_multiple: bool = False
+    max_questions: int | None = None
+    max_body_bytes: int | None = None
+
+
+_JEV = Capabilities(frozenset({"noul", "choice", "score", "box"}))            # docs.typesafe.ai/go/primitives
+_LIQUID_D12 = Capabilities(frozenset({"noul", "choice", "score", "text", "number", "date", "spans", "box",
+                                      "boxes"}), choice_multiple=True, max_questions=128,
+                           max_body_bytes=4_500_000)                          # docs.liquid.ai/api/guides/decisions
+_LIQUID_OLD = Capabilities(frozenset({"noul", "choice", "score"}), max_questions=128,
+                           max_body_bytes=4_500_000)                          # deprecated d1, d1.1, d1-ultra
 
 
 # List prices checked 2026-11-17. Prices change: confirm on each provider's pricing page.
@@ -40,6 +59,7 @@ BUILTIN: dict[str, Provider] = {
         key_env="TYPESAFE_API_KEY",
         usd_per_mtok={"*": 0.042},
         docs="https://docs.typesafe.ai/go/models.md",
+        caps={"*": _JEV},
     ),
     "liquid": Provider(
         name="liquid",
@@ -48,6 +68,8 @@ BUILTIN: dict[str, Provider] = {
         key_env="LIQUID_API_KEY",
         usd_per_mtok={"d1.2-ultra": 0.042, "d1.2": 0.02},
         docs="https://docs.liquid.ai/lfm/models/d1",
+        caps={"d1.2-ultra": _LIQUID_D12, "d1.2": _LIQUID_D12, "d1.1": _LIQUID_OLD, "d1-ultra": _LIQUID_OLD,
+              "d1": _LIQUID_OLD},
     ),
     "custom": Provider(
         name="custom",
@@ -77,6 +99,10 @@ def check_url(url: str) -> None:
     raise ValueError("base_url must be https:// (plain http:// is allowed only for localhost)")
 
 
+class UnsupportedRequest(ValueError):
+    """The request can't work on this provider/model. Raised before sending, so nothing is billed."""
+
+
 @dataclass(frozen=True)
 class Resolved:
     """A provider with the user's settings applied: everything one request needs except the key."""
@@ -85,6 +111,27 @@ class Resolved:
     model: str
     key_env: str
     price_per_token: float
+    caps: Capabilities | None = None
+
+    def check(self, body: dict, body_bytes: int) -> None:
+        c = self.caps
+        if c is None:
+            return
+        qs = body.get("questions") or {}
+        if c.max_questions is not None and len(qs) > c.max_questions:
+            raise UnsupportedRequest(f"{self.provider}/{self.model} takes at most {c.max_questions} questions "
+                                     f"per request (got {len(qs)})")
+        if c.max_body_bytes is not None and body_bytes > c.max_body_bytes:
+            raise UnsupportedRequest(f"{self.provider}/{self.model} takes request bodies up to "
+                                     f"{c.max_body_bytes} bytes (got {body_bytes})")
+        for qid, q in qs.items():
+            t = q.get("type")
+            if t not in c.types:
+                raise UnsupportedRequest(f"question {qid!r}: type {t!r} is not supported by "
+                                         f"{self.provider}/{self.model} (supported: {', '.join(sorted(c.types))})")
+            if t == "choice" and q.get("multiple") and not c.choice_multiple:
+                raise UnsupportedRequest(f"question {qid!r}: choice with multiple is not supported by "
+                                         f"{self.provider}/{self.model}")
 
     @property
     def url(self) -> str:
@@ -109,4 +156,5 @@ def resolve(provider: str, *, model: str = "", base_url: str = "",
     check_url(url)
     if not mdl:
         raise ValueError(f"provider {name!r} needs model in the plugin settings")
-    return Resolved(name, url, mdl, p.key_env, p.price_per_token(mdl, usd_per_mtok))
+    caps = None if p.caps is None else p.caps.get(mdl, p.caps.get("*"))
+    return Resolved(name, url, mdl, p.key_env, p.price_per_token(mdl, usd_per_mtok), caps)

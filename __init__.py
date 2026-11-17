@@ -124,6 +124,8 @@ def _make_handler(ctx):
                       provider=args.get("provider") or None, model=args.get("model") or None,
                       dry_run=bool(args.get("dry_run")))
             return json.dumps(r, ensure_ascii=False)
+        except so.UnsupportedRequest as e:
+            return json.dumps({"error": str(e), "kind": "unsupported"})
         except so.BudgetExceeded as e:
             return json.dumps({"error": f"budget: {e}", "kind": "budget_exceeded"})
         except so.SystemOneError as e:

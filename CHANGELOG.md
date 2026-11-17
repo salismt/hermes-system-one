@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 (2026-11-17)
+
+- **No SDK needed.** `system_one.noul / choice / score / box / question` build questions as plain
+  dicts in the exact wire shape the TypeSafe SDK sends, so wording moves over unchanged. SDK
+  objects (anything with `model_dump()`) are still accepted.
+- **Model-aware checks before sending.** Each provider/model declares the question types and
+  limits it accepts. A request that can't work is refused with `UnsupportedRequest` (tool kind
+  `unsupported`) before any spend:
+  - Jev: noul, choice, score, box.
+  - Liquid d1.2 / d1.2-ultra: those plus text, number, date, spans, boxes and `choice` with
+    `multiple`; at most 128 questions and a 4.5 MB body.
+  - Deprecated Liquid d1, d1.1, d1-ultra: noul, choice, score.
+  - `custom`: not checked.
+- Answers in shapes the client doesn't model (e.g. multi-select choice) are passed through
+  unchanged by `simplify()`.
+- Background: typesafe-sdk 0.7.5 (latest) raises on `response.request_id` against Liquid, which
+  sends no `x-typesafe-request-id` header, after the call is already billed. This client never
+  needed that header.
+
 ## 0.2.0 (2026-11-17), first public release
 
 - `system_one` tool: typed questions (noul, choice, score, and whatever else the provider

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from . import __version__
-from .providers import Resolved, resolve
+from .providers import Resolved, UnsupportedRequest, resolve  # noqa: F401
 from .spend import BudgetExceeded, Caps, Ledger, estimate_tokens
 
 REQUEST_ID_HEADERS = ("x-typesafe-request-id", "x-request-id", "request-id")
@@ -132,11 +132,14 @@ class SystemOne:
             model: str | None = None, run_cap_usd: float | None = None, dry_run: bool = False) -> dict:
         """Returns ``{provider, model, answers, usage, request_id, usd}`` (answers as sent on the wire).
 
-        Raises ``BudgetExceeded`` before sending, ``SystemOneError`` on any provider failure.
+        Raises ``UnsupportedRequest`` (question type or limit the model can't take) and
+        ``BudgetExceeded`` before sending, ``SystemOneError`` on any provider failure.
         A failed call is never turned into an answer.
         """
         r = self.settings.resolved(provider, model)
         body = build_body(r.model, state, questions)
+        raw = json.dumps(body, ensure_ascii=False).encode()
+        r.check(body, len(raw))  # UnsupportedRequest before any spend
         est = estimate_tokens(body)
         est_usd = est * r.price_per_token
         if dry_run:
@@ -144,7 +147,6 @@ class SystemOne:
                     "est_usd": round(est_usd, 8)}
         self.ledger.check(est_usd, self.settings.caps, tag=tag, run_cap_usd=run_cap_usd)
         key = _valid_key(self._get_key(r.key_env), r.key_env)
-        raw = json.dumps(body, ensure_ascii=False).encode()
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                    "Accept": "application/json", "User-Agent": f"hermes-system-one/{__version__}"}
         try:
@@ -211,6 +213,8 @@ def simplify(answers: Mapping[str, Any]) -> dict:
         t = a.get("type") if isinstance(a, Mapping) else None
         if t == "noul":
             out[name] = round(float(a["noul"]), 3)
+        elif t == "choice" and "choice" not in a:
+            out[name] = a  # e.g. multi-select: keep the provider's shape unchanged
         elif t in ("choice", "score"):
             out[name] = {"choice": a.get("choice", a.get("score")),
                          "probabilities": {k: round(v, 3) for k, v in (a.get("probabilities") or {}).items()}}

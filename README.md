@@ -123,7 +123,7 @@ Optional arguments:
   decide which vendor receives your data.
 - `tag` labels the call in the spend ledger.
 
-Errors come back as `{"error": ..., "kind": "budget_exceeded" | "provider_error" | "invalid_request"}`.
+Errors come back as `{"error": ..., "kind": "unsupported" | "budget_exceeded" | "provider_error" | "invalid_request"}`.
 They are never turned into an answer.
 
 ## Use from your own scripts
@@ -134,17 +134,49 @@ service can use the same providers and caps:
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.hermes/plugins/system-one"))
-from system_one import SystemOne, Settings, Caps, simplify
+from system_one import SystemOne, Settings, Caps, noul, simplify
 
 s1 = SystemOne(Settings(provider="liquid", caps=Caps(total_usd=5, daily_usd=0.5, per_call_usd=0.05)),
                ledger_path="spend.sqlite", get_key=os.environ.get)
 r = s1.ask({"message": "Help! My payouts have been failing."},
-           {"urgent": {"type": "noul", "instructions": "Does `message` convey urgency?"}}, tag="my-job")
+           {"urgent": noul("Does `message` convey urgency?")}, tag="my-job")
 print(simplify(r["answers"]))   # e.g. {'urgent': 0.95}
 ```
 
-Questions may be plain dicts, or TypeSafe SDK objects (`Choice`, `Noul`, `Score`), since anything
-with `model_dump()` works.
+Build questions with the plugin's helpers. They produce plain dicts in the exact shape the TypeSafe
+SDK sends, so no SDK is needed:
+
+```python
+from system_one import noul, choice, score, box, question
+
+qs = {
+    "urgent": noul("Does `message` convey urgency?",
+                   {"true": "The sender needs action today.", "false": "Nothing is time-bound."}),
+    "team":   choice("Which team should handle `message`?", {"billing": "Payments", "technical": "Bugs"}),
+    "tags":   choice("Which topics apply?", {"refund": "...", "outage": "..."}, multiple=True),  # Liquid d1.2+
+    "anger":  score("How frustrated is the sender?", ["Calm", "Frustrated", "Very angry"]),
+    "invoice": question("text", "What is the invoice number in `message`?"),                 # Liquid d1.2+
+}
+```
+
+TypeSafe SDK objects (`Choice`, `Noul`, `Score`) still work, since anything with `model_dump()` is
+accepted. Don't use the SDK's own client against Liquid: as of typesafe-sdk 0.7.5 it raises on the
+missing `x-typesafe-request-id` header after the call has been billed.
+
+### What each model accepts
+
+The client checks every request against the chosen model before sending, so a request that can't
+work fails with `UnsupportedRequest` (tool result kind `unsupported`) and costs nothing.
+
+| Provider / model | Question types | Limits |
+| --- | --- | --- |
+| `jev` | noul, choice, score, box | |
+| `liquid` `d1.2`, `d1.2-ultra` | noul, choice (+`multiple`), score, text, number, date, spans, box, boxes | 128 questions, 4.5 MB body |
+| `liquid` `d1`, `d1.1`, `d1-ultra` (deprecated) | noul, choice, score | 128 questions, 4.5 MB body |
+| `custom` | not checked | not checked |
+
+`simplify()` passes through any answer shape it doesn't model (multi-select choice, text, spans
+and so on) unchanged.
 
 ## The System One contract
 

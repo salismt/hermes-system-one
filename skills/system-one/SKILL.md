@@ -55,6 +55,12 @@ The `system_one` tool sends every request to the provider set in the plugin sett
 | `liquid` (Liquid AI) | `d1.2-ultra`, `d1.2` | [decisions guide](https://docs.liquid.ai/api/guides/decisions.md), [d1.2 models](https://docs.liquid.ai/lfm/models/d1.md), [index](https://docs.liquid.ai/llms.txt) |
 | `custom` | your own | the endpoint's own docs |
 
+Question types differ by model, and the client refuses a request the chosen model can't take
+before sending (tool result kind `unsupported`). Jev takes noul, choice, score and box. Liquid
+d1.2 and d1.2-ultra also take text, number, date, spans, boxes and `choice` with `multiple`. In
+scripts, build questions with `system_one.noul / choice / score / box / question` rather than an
+SDK.
+
 Read the docs page for the question types you use. Providers support different answer types
 (text, number, date, spans and box, for example), and their models have different weak spots.
 A wording tuned on one model is a hypothesis on another, so re-check it on the cases you care
